@@ -1,0 +1,72 @@
+{
+  // Important!!!!!!! 
+  // for this to work You must add  "terminal.integrated.allowWorkspaceConfiguration":true
+  // in your user settings 
+  // see https://code.visualstudio.com/docs/getstarted/settings#_settings-file-locations 
+  // on how to locate your user settings
+  "terminal.integrated.allowWorkspaceConfiguration":true,
+
+  "terminal.integrated.profiles.windows": {
+    "idf": {
+      "path": "${env:windir}/System32/cmd.exe",
+      "args": ["/k", "/home/dekameron/esp/esp-idf/export.bat"],
+      
+    }
+  },
+  "terminal.integrated.profiles.linux": {
+    "idf": {
+      "path": "/bin/bash",
+      "args":["--init-file", "/home/dekameron/esp/esp-idf/export.sh", "-i"],
+      
+    },
+  },
+  "terminal.integrated.profiles.osx": {
+    "idf": {
+      "path": "/bin/bash",
+      "args": ["--init-file", "/home/dekameron/esp/esp-idf/export.sh", "-i"],
+      
+    },
+  },
+  // the following is being depricated and will be replaced.
+  "terminal.integrated.shell.windows": "cmd.exe",
+  
+  "terminal.integrated.shellArgs.windows": ["/k", "/home/dekameron/esp/esp-idf/export.bat"],
+  "terminal.integrated.shell.linux": "/bin/bash",
+  "terminal.integrated.shellArgs.linux": ["--init-file", "/home/dekameron/esp/esp-idf/export.sh", "-i"],
+  "terminal.integrated.shell.osx": "/bin/bash",
+  "terminal.integrated.shellArgs.osx": ["--init-file", "/home/dekameron/esp/esp-idf/export.sh", "-i"],
+  "files.associations": {
+    "*.md": "markdown",
+    "*.mdx": "tdx",
+    "stdio.h": "c",
+    "task.h": "c",
+    "freertos.h": "c",
+    "ws2812.h": "c",
+    "array": "c",
+    "string": "c",
+    "string_view": "c",
+    "ranges": "c",
+    "esp_dsp.h": "c",
+    "rmt_struct.h": "c",
+    "i2s.h": "c",
+    "*.inc": "c",
+    "fft_controller.h": "c",
+    "freertosconfig.h": "c",
+    "bt_app_core.h": "c",
+    "stdint.h": "c",
+    "gpio.h": "c",
+    "esp_avrc_api.h": "c",
+    "esp_bt_device.h": "c",
+    "math.h": "c",
+    "esp_log.h": "c",
+    "esp_spi_flash.h": "c",
+    "led_controller.h": "c",
+    "string.h": "c",
+    "stdbool.h": "c",
+    "led_controller.hpp": "c",
+    "bt_app_av.h": "c"
+  },
+  "C_Cpp.errorSquiggles": "Disabled",
+  "git.ignoreLimitWarning": true,
+  "cmake.configureOnOpen": false
+}
