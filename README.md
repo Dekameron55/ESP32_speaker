@@ -13,3 +13,5 @@ It supports the following features:
 -screen saver when music is not playing.
 -color change for the led matrix.
 -brightness adjustment.
+
+https://github.com/Dekameron55/ESP32_A2DP_sink_mod/blob/main/Photo1.jpg
