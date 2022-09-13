@@ -12,11 +12,24 @@
 #include "freertos/task.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
-
+#include "bt_app_av.h"
 #include "FastLED.h"
 #include "FX.h"
 
 // LED Settings
+
+volatile uint32_t gVariable = 97;
+volatile uint32_t gBrightness = 100;
+volatile uint32_t gColor = 200;
+volatile uint32_t gSpeed = 5;
+volatile uint32_t gSpeedPulse = 5;
+volatile uint32_t gFFTrefresh = 75;
+
+
+volatile bool pulse = false;
+volatile bool goUp = false;
+volatile bool goDown = false;
+
 #define LED_COUNT   64
 #define LED_PIN     32
 #define CHANNEL     0
@@ -28,11 +41,11 @@
 #define NUM_BANDS  8
 #define SAMPLES 2048              
 
-#define BRIGHTNESS 100
+#define BRIGHTNESS 10
 
-#define DEVICE_NAME "ThingPulse-Icon64"
 
 CRGB leds[NUM_LEDS];
+CHSV leds_HSV(0,255,255);
 
 int pushButton = 39;
 
@@ -95,7 +108,12 @@ void createBands(int i, int dsize) {
 //   printf("BAND === %d |||||| BandNum %d  |||||| datasize %d \n" ,peak[band],band, dsize);
 //  }
 }
-
+extern "C"  void drawColor(){
+        for(int i = 0 ; i < NUM_LEDS; i++){
+          leds_HSV.hue = gColor;
+          hsv2rgb_rainbow(leds_HSV,leds[i]);
+        }
+}
 extern "C"  void renderFFT(float * y1_cf){
   
   int item = 2;
@@ -115,13 +133,35 @@ extern "C"  void renderFFT(float * y1_cf){
       uint8_t intensity;
       
       FastLED.clear();
-      FastLED.setBrightness(BRIGHTNESS);
+      FastLED.setBrightness(gBrightness);
       for (byte band = 0; band < NUM_BANDS; band++) {
         intensity = map8(peak[band], 0, 60);
  //       printf("intensity  %d   |||| %d Band \n",intensity,band);
 
-        for (int i = 0; i < 8; i++) {
-          leds[getLedIndex( i,  band)] = (i >= intensity) ? CHSV(0, 0, 0) : CHSV(i * 16, 255, 255);
+ 
+        switch(gVariable){
+            case 97:
+              for (int i = 0; i < 8; i++) {
+                  leds[getLedIndex( i,  band)] = (i >= intensity) ? CHSV(0, 0, 0) : CHSV(i * 16, 255, 255);
+                }
+              break;
+            case 100:
+              for (int i = 0; i < 8; i++) {
+                  leds[getLedIndex( i,  band)] = (i >= intensity) ? CHSV(0, 0, 0) : CHSV(gColor, 255, 255);
+                }
+              break;
+            case 101:
+                for (int i = 0; i < 8; i++) {
+                  leds[getLedIndex( i,  band)] = (i >= intensity) ? CRGB::Black : CRGB::Green;
+                }
+              break;
+            case 103:
+                for (int i = 0; i < 8; i++) {
+                  leds[getLedIndex( i,  band)] = (i >= intensity) ? CRGB::Black : CRGB::Blue;
+                }
+              break;
+            default: printf("Not good case %d", gVariable); gVariable = 97;
+        
         }
       }
 
@@ -136,11 +176,94 @@ extern "C"  void renderFFT(float * y1_cf){
       visualizationCounter++;
   
 }
+extern "C" const uint32_t HEART[] = {
+    0x00222222, 0x00222222, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x00222222, 0x00222222, 0x00222222,
+    0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x00222222, 0x00222222,
+    0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x00222222,
+    0x00222222, 0x00222222, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00,
+    0x00222222, 0x00222222, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00,
+    0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x00222222,
+    0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x00222222, 0x00222222,
+    0x00222222, 0x00222222, 0x0000ff00, 0x0000ff00, 0x0000ff00, 0x00222222, 0x00222222, 0x00222222};
+extern "C"  void drawHeart(){
+        for(int i = 0 ; i < NUM_LEDS; i++){
+          leds[i]=HEART[i];
+        }
+}
+
+extern "C"  void rainbowMarch(){
+
+        uint8_t thisHue = beat8(gSpeed,255);                     // A simple rainbow march
+        fill_rainbow(leds, NUM_LEDS, thisHue, 1);            // Use FastLED's fill_rainbow routine.                                    // Speed, delta hue values.
+     
+}
+extern "C"  void rainbowWave(){
+
+        uint8_t thisHue = beatsin8(gSpeed,0,255);                     // A simple rainbow march
+        fill_rainbow(leds, NUM_LEDS, thisHue, 1);            // Use FastLED's fill_rainbow routine.                                    // Speed, delta hue values.
+     
+}
+
+ extern "C" void drawIcon(void * p_param) {
+  while (1)
+  {
+    if(pulse){
+      if(gBrightness > 80){
+        gBrightness = 80;
+        goUp = false;
+      }
+      if(gBrightness < 5){
+        gBrightness = 5;
+        goUp = true;
+      }
+      if(gBrightness == 80){
+        goUp = false;
+      }
+      else if(gBrightness == 5){
+        goUp = true;
+      }
 
 
+      if(goUp == true)
+      {
+      gBrightness++;
+      }
+      else{
+      gBrightness--;
+      }
+    vTaskDelay(gSpeedPulse/ portTICK_PERIOD_MS);   
+    }
+    FastLED.setBrightness(gBrightness);  
+    vTaskDelay(10 / portTICK_PERIOD_MS);   
+
+
+    switch(gVariable){
+      case 97: rainbowMarch(); break;
+      case 98: rainbowWave(); break;
+      case 99: drawHeart(); pulse = false; break;
+      case 100: drawColor(); break;
+      case 101: 
+                if(!pulse)
+                {goUp = true;gBrightness =10; pulse = true;}   
+                 rainbowMarch();  break;
+      case 102: 
+                if(pulse)
+            {goUp = false;gBrightness =10; pulse = false;}   
+              rainbowWave();  break;
+
+    }   
+    FastLED.show();
+    vTaskDelay(10/ portTICK_PERIOD_MS);   
+  }
+}
+
+extern "C"  void clear_leds(){
+
+      FastLED.clear();
+}
 extern "C"  void setup_leds(){
 
     FastLED.addLeds<WS2812B, DATA_PIN>(leds, NUM_LEDS);
-    FastLED.setMaxPowerInVoltsAndMilliamps(12,2000);
+    FastLED.setMaxPowerInVoltsAndMilliamps(12,3000);
 
 }

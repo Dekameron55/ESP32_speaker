@@ -25,7 +25,9 @@
 #include "freertos/task.h"
 #include "driver/i2s.h"
 #include "fft_controller.h"
+#include "led_controller.hpp"
 #include "sys/lock.h"
+static xTaskHandle drawIconHandle = NULL;
 
 // AVRCP used transaction label
 #define APP_RC_CT_TL_GET_CAPS            (0)
@@ -75,6 +77,7 @@ void bt_app_a2d_data_cb(const uint8_t *data, uint32_t len)
     if (++s_pkt_cnt % 100 == 0) {
         ESP_LOGI(BT_AV_TAG, "Audio packet count %u", s_pkt_cnt);
     }
+    // vTaskDelay(25/portTICK_PERIOD_MS);
 }
 
 void bt_app_alloc_meta_buffer(esp_avrc_ct_cb_param_t *param)
@@ -137,9 +140,14 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
         if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
             esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
             bt_i2s_task_shut_down();
+            esp_restart();
         } else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED){
             esp_bt_gap_set_scan_mode(ESP_BT_NON_CONNECTABLE, ESP_BT_NON_DISCOVERABLE);
             bt_i2s_task_start_up();
+            vTaskDelete(drawIconHandle);
+            clear_leds();
+            xTaskCreatePinnedToCore(&calculate_fft, "calculate_fft", 4000, NULL, 5, NULL, 1);
+
         }
         break;
     }
@@ -181,6 +189,8 @@ static void bt_av_hdl_a2d_evt(uint16_t event, void *p_param)
         a2d = (esp_a2d_cb_param_t *)(p_param);
         if (ESP_A2D_INIT_SUCCESS == a2d->a2d_prof_stat.init_state) {
             ESP_LOGI(BT_AV_TAG,"A2DP PROF STATE: Init Compl\n");
+            xTaskCreatePinnedToCore(&drawIcon, "drawIcon", 4000, NULL, 5, &drawIconHandle, 1);
+
         } else {
             ESP_LOGI(BT_AV_TAG,"A2DP PROF STATE: Deinit Compl\n");
         }
@@ -318,7 +328,6 @@ static void volume_change_simulation(void *arg)
     ESP_LOGI(BT_RC_TG_TAG, "start volume change simulation");
 
     for (;;) {
-        vTaskDelay(10000 / portTICK_RATE_MS);
 
         uint8_t volume = (s_volume + 5) & 0x7f;
         volume_set_by_local_host(volume);
@@ -336,10 +345,10 @@ static void bt_av_hdl_avrc_tg_evt(uint16_t event, void *p_param)
                  rc->conn_stat.connected, bda[0], bda[1], bda[2], bda[3], bda[4], bda[5]);
         if (rc->conn_stat.connected) {
             // create task to simulate volume change
-           // xTaskCreate(volume_change_simulation, "vcsT", 2048, NULL, 5, &s_vcs_task_hdl);
+            //xTaskCreate(volume_change_simulation, "vcsT", 2048, NULL, 5, &s_vcs_task_hdl);
         } else {
-            vTaskDelete(s_vcs_task_hdl);
-            ESP_LOGI(BT_RC_TG_TAG, "Stop volume change simulation");
+            //vTaskDelete(s_vcs_task_hdl);
+            //ESP_LOGI(BT_RC_TG_TAG, "Stop volume change simulation");
         }
         break;
     }

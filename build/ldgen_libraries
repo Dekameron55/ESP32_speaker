@@ -1,3 +1,4 @@
+/home/dekameron/esp/a2dp_sink/build/esp-idf/esp_pm/libesp_pm.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/mbedtls/libmbedtls.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/efuse/libefuse.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/app_update/libapp_update.a
@@ -7,7 +8,6 @@
 /home/dekameron/esp/a2dp_sink/build/esp-idf/nvs_flash/libnvs_flash.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/pthread/libpthread.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_gdbstub/libesp_gdbstub.a
-/home/dekameron/esp/a2dp_sink/build/esp-idf/espcoredump/libespcoredump.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_system/libesp_system.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_rom/libesp_rom.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/hal/libhal.a
@@ -23,10 +23,10 @@
 /home/dekameron/esp/a2dp_sink/build/esp-idf/heap/libheap.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/soc/libsoc.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_hw_support/libesp_hw_support.a
-/home/dekameron/esp/a2dp_sink/build/esp-idf/esp_pm/libesp_pm.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_ringbuf/libesp_ringbuf.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/driver/libdriver.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/xtensa/libxtensa.a
+/home/dekameron/esp/a2dp_sink/build/esp-idf/espcoredump/libespcoredump.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/perfmon/libperfmon.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp32/libesp32.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_common/libesp_common.a
@@ -50,7 +50,6 @@
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_http_client/libesp_http_client.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_http_server/libesp_http_server.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp_https_ota/libesp_https_ota.a
-/home/dekameron/esp/a2dp_sink/build/esp-idf/esp_lcd/libesp_lcd.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/protobuf-c/libprotobuf-c.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/protocomm/libprotocomm.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/mdns/libmdns.a
@@ -70,7 +69,7 @@
 /home/dekameron/esp/a2dp_sink/build/esp-idf/spiffs/libspiffs.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/ulp/libulp.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/wifi_provisioning/libwifi_provisioning.a
-/home/dekameron/esp/a2dp_sink/build/esp-idf/main/libmain.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/FastLED-idf/libFastLED-idf.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/WS2812FX-idf/libWS2812FX-idf.a
 /home/dekameron/esp/a2dp_sink/build/esp-idf/esp-dsp/libesp-dsp.a
+/home/dekameron/esp/a2dp_sink/build/esp-idf/main/libmain.a

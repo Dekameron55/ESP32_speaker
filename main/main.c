@@ -31,6 +31,7 @@
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
+#include "esp_spp_api.h"
 #include "driver/i2s.h"
 //////////////////////////////
 #include <math.h>
@@ -40,84 +41,147 @@
 #include "ws2812.h"
 #include "fft_controller.h"
 #include "led_controller.hpp"
+/* event for handler "bt_av_hdl_stack_up */
+#include "time.h"
+#include "sys/time.h"
 
-static const char *TAG = "main";
-#define WS2812_PIN	18
+#define SPP_TAG "SPP_ACCEPTOR_DEMO"
+#define SPP_SERVER_NAME "SPP_SERVER"
+#define EXAMPLE_DEVICE_NAME "ESP_SPP_ACCEPTOR"
+#define SPP_SHOW_DATA 1
+#define SPP_SHOW_SPEED 1
+#define SPP_SHOW_MODE SPP_SHOW_SPEED    /*Choose show mode: show data or speed*/
 
-#define delay_ms(ms) vTaskDelay((ms) / portTICK_RATE_MS)
-void fft_trial();
+static const esp_spp_mode_t esp_spp_mode = ESP_SPP_MODE_CB;
 
-void rainbow(void *pvParameters)
+static struct timeval time_new, time_old;
+static long data_num = 0;
+
+static const esp_spp_sec_t sec_mask = ESP_SPP_SEC_AUTHENTICATE;
+static const esp_spp_role_t role_slave = ESP_SPP_ROLE_SLAVE;
+
+static void print_speed(void)
 {
-  const uint8_t anim_step = 10;
-  const uint8_t anim_max = 250;
-  const uint8_t pixel_count = 8; // Number of your "pixels"
-  const uint8_t delay = 25; // duration between color changes
-  rgbVal color = makeRGBVal(anim_max, 0, 0);
-  uint8_t step = 0;
-  rgbVal color2 = makeRGBVal(anim_max, 0, 0);
-  uint8_t step2 = 0;
-  rgbVal *pixels;
-
-
-  pixels = malloc(sizeof(rgbVal) * pixel_count);
-
-  while (1) {
-    color = color2;
-    step = step2;
-
-    for (uint8_t i = 0; i < pixel_count; i++) {
-      pixels[i] = color;
-
-      if (i == 1) {
-        color2 = color;
-        step2 = step;
-      }
-
-      switch (step) {
-      case 0:
-        color.g += anim_step;
-        if (color.g >= anim_max)
-          step++;
+    float time_old_s = time_old.tv_sec + time_old.tv_usec / 1000000.0;
+    float time_new_s = time_new.tv_sec + time_new.tv_usec / 1000000.0;
+    float time_interval = time_new_s - time_old_s;
+    float speed = data_num * 8 / time_interval / 1000.0;
+    ESP_LOGI(SPP_TAG, "speed(%fs ~ %fs): %f kbit/s" , time_old_s, time_new_s, speed);
+    data_num = 0;
+    time_old.tv_sec = time_new.tv_sec;
+    time_old.tv_usec = time_new.tv_usec;
+}
+unsigned concatenate(unsigned x, unsigned y) {
+    unsigned pow = 10;
+    while(y >= pow)
+        pow *= 10;
+    return x * pow + y;        
+}
+static void esp_spp_cb(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
+{
+    switch (event) {
+    case ESP_SPP_INIT_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_INIT_EVT");
+        esp_bt_dev_set_device_name(EXAMPLE_DEVICE_NAME);
+        esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
+        esp_spp_start_srv(sec_mask,role_slave, 0, SPP_SERVER_NAME);
         break;
-      case 1:
-        color.r -= anim_step;
-        if (color.r == 0)
-          step++;
+    case ESP_SPP_DISCOVERY_COMP_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_DISCOVERY_COMP_EVT");
         break;
-      case 2:
-        color.b += anim_step;
-        if (color.b >= anim_max)
-          step++;
+    case ESP_SPP_OPEN_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_OPEN_EVT");
         break;
-      case 3:
-        color.g -= anim_step;
-        if (color.g == 0)
-          step++;
+    case ESP_SPP_CLOSE_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_CLOSE_EVT");
         break;
-      case 4:
-        color.r += anim_step;
-        if (color.r >= anim_max)
-          step++;
+    case ESP_SPP_START_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_START_EVT");
         break;
-      case 5:
-        color.b -= anim_step;
-        if (color.b == 0)
-          step = 0;
+    case ESP_SPP_CL_INIT_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_CL_INIT_EVT");
         break;
-      }
+    case ESP_SPP_DATA_IND_EVT:
+#if (SPP_SHOW_MODE == SPP_SHOW_DATA)
+        ESP_LOGI(SPP_TAG, "ESP_SPP_DATA_IND_EVT len=%d handle=%d",
+                 param->data_ind.len, param->data_ind.handle);
+        esp_log_buffer_hex("",param->data_ind.data,param->data_ind.len);
+        char str[100];
+        switch (param->data_ind.data[0])
+        {
+        case 0x7a:
+            gBrightness = 0;
+            for(int i = 1 ; i < param->data_ind.len; i++){
+                // gBrightness += concatenate(gBrightness,param->data_ind.data[i]-48);
+                sprintf(str, "%d%d", gBrightness,param->data_ind.data[i]-48);
+                gBrightness=strtol(str, NULL, 10);
+            }
+            break;
+        case 0x78:
+            gColor = 0;
+            gVariable = 100;
+            for(int i = 1 ; i < param->data_ind.len; i++){
+                // gBrightness += concatenate(gBrightness,param->data_ind.data[i]-48);
+                sprintf(str, "%d%d", gColor,param->data_ind.data[i]-48);
+                gColor=strtol(str, NULL, 10);
+            }
+            break;
+        case 0x79:
+            gSpeed = 0;
+            for(int i = 1 ; i < param->data_ind.len; i++){
+                // gBrightness += concatenate(gBrightness,param->data_ind.data[i]-48);
+                sprintf(str, "%d%d", gSpeed,param->data_ind.data[i]-48);
+                gSpeed=strtol(str, NULL, 10);
+            }
+            break;  
+        case 0x71:
+            gSpeedPulse = 0;
+            for(int i = 1 ; i < param->data_ind.len; i++){
+                // gBrightness += concatenate(gBrightness,param->data_ind.data[i]-48);
+                sprintf(str, "%d%d", gSpeed,param->data_ind.data[i]-48);
+                gSpeedPulse=strtol(str, NULL, 10);
+            }
+            break; 
+        case 0x72:
+            gFFTrefresh = 0;
+            for(int i = 1 ; i < param->data_ind.len; i++){
+                // gBrightness += concatenate(gBrightness,param->data_ind.data[i]-48);
+                sprintf(str, "%d%d", gSpeed,param->data_ind.data[i]-48);
+                gFFTrefresh=strtol(str, NULL, 10);
+            }
+            break;               
+        default: gVariable = param->data_ind.data[0];
+            break;
+        }
+#else
+        gettimeofday(&time_new, NULL);
+        data_num += param->data_ind.len;
+        if (time_new.tv_sec - time_old.tv_sec >= 3) {
+            print_speed();
+        }
+#endif
+        break;
+    case ESP_SPP_CONG_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_CONG_EVT");
+        break;
+    case ESP_SPP_WRITE_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_WRITE_EVT");
+        break;
+    case ESP_SPP_SRV_OPEN_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_SRV_OPEN_EVT");
+        gettimeofday(&time_old, NULL);
+        break;
+    case ESP_SPP_SRV_STOP_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_SRV_STOP_EVT");
+        break;
+    case ESP_SPP_UNINIT_EVT:
+        ESP_LOGI(SPP_TAG, "ESP_SPP_UNINIT_EVT");
+        break;
+    default:
+        break;
     }
-
-    ws2812_setColors(pixel_count, pixels);
-
-    delay_ms(delay);
-  }
 }
 
-
-/////////////////////////////
-////
-/* event for handler "bt_av_hdl_stack_up */
 enum {
     BT_APP_EVT_STACK_UP = 0,
 };
@@ -127,12 +191,12 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param);
 
 
 void app_main(void)
-{
+{   
+    
+    
+     init_fft();
+    setup_leds();
 
-  //07.06.21 Adding something to init and see what it happens
-
-    init_fft();
-    xTaskCreatePinnedToCore(&calculate_fft, "calculate_fft", 4000, NULL, 5, NULL, 1);
 
     /* Initialize NVS — it is used to store PHY calibration data */
     esp_err_t err = nvs_flash_init();
@@ -143,15 +207,12 @@ void app_main(void)
     ESP_ERROR_CHECK(err);
 
     i2s_config_t i2s_config = {
-#ifdef CONFIG_EXAMPLE_A2DP_SINK_OUTPUT_INTERNAL_DAC
-        .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
-#else
+
         .mode = I2S_MODE_MASTER | I2S_MODE_TX,                                  // Only TX
-#endif
         .sample_rate = 44100,
         .bits_per_sample = 16,
         .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,                           //2-channels
-        .communication_format = I2S_COMM_FORMAT_STAND_MSB,
+        .communication_format = I2S_COMM_FORMAT_STAND_I2S,
         .dma_buf_count = 6,
         .dma_buf_len = 60,
         .intr_alloc_flags = 0,                                                  //Default interrupt priority
@@ -198,6 +259,16 @@ void app_main(void)
         return;
     }
 
+    if ((err = esp_spp_register_callback(esp_spp_cb)) != ESP_OK) {
+        ESP_LOGE(SPP_TAG, "%s spp register failed: %s\n", __func__, esp_err_to_name(err));
+        return;
+    }
+
+    if ((err = esp_spp_init(esp_spp_mode)) != ESP_OK) {
+        ESP_LOGE(SPP_TAG, "%s spp init failed: %s\n", __func__, esp_err_to_name(err));
+        return;
+    }
+
     /* create application task */
     bt_app_task_start_up();
 
@@ -222,8 +293,6 @@ void app_main(void)
     pin_code[2] = '3';
     pin_code[3] = '4';
     esp_bt_gap_set_pin(pin_type, 4, pin_code);
-    setup_leds();
-
 }
 
 void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
@@ -254,6 +323,7 @@ void bt_app_gap_cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)
 
     case ESP_BT_GAP_MODE_CHG_EVT:
         ESP_LOGI(BT_AV_TAG, "ESP_BT_GAP_MODE_CHG_EVT mode:%d", param->mode_chg.mode);
+
         break;
 
     default: {
@@ -269,7 +339,7 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
     switch (event) {
     case BT_APP_EVT_STACK_UP: {
         /* set up device name */
-        char *dev_name = "ESP_SPEAKER";
+        char *dev_name = "Demonorix";
         esp_bt_dev_set_device_name(dev_name);
 
         esp_bt_gap_register_callback(bt_app_gap_cb);
@@ -298,75 +368,4 @@ static void bt_av_hdl_stack_evt(uint16_t event, void *p_param)
         ESP_LOGE(BT_AV_TAG, "%s unhandled evt %d", __func__, event);
         break;
     }
-}
-
-#define N_SAMPLES 64
-int N = N_SAMPLES;
-// Input test array
-float x1[N_SAMPLES];
-float x2[N_SAMPLES];
-// Window coefficients
-float wind[N_SAMPLES];
-// working complex array
-float y_cf[N_SAMPLES*2];
-// Pointers to result arrays
-float* y1_cf = &y_cf[0];
-float* y2_cf = &y_cf[N_SAMPLES];
-
-// Sum of y1 and y2
-float sum_y[N_SAMPLES/2];
-
-
-void fft_trial(){
-
-esp_err_t ret;
-    ESP_LOGI(TAG, "Start Example.");
-    ret = dsps_fft2r_init_fc32(NULL, CONFIG_DSP_MAX_FFT_SIZE);
-    if (ret  != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Not possible to initialize FFT. Error = %i", ret);
-        return;
-    }
-
-    // Generate hann window
-    dsps_wind_hann_f32(wind, N);
-    // Generate input signal for x1 A=1 , F=0.1
-    dsps_tone_gen_f32(x1, N, 1.0, 0.16,  0);
-    // Generate input signal for x2 A=0.1,F=0.2
-    dsps_tone_gen_f32(x2, N, 0.1, 0.2, 0);
-
-    // Convert two input vectors to one complex vector
-    for (int i=0 ; i< N ; i++)
-    {
-        y_cf[i*2 + 0] = x1[i] * wind[i];
-        y_cf[i*2 + 1] = x2[i] * wind[i];
-    }
-    // FFT
-    unsigned int start_b = xthal_get_ccount();
-    dsps_fft2r_fc32(y_cf, N);
-    unsigned int end_b = xthal_get_ccount();
-    // Bit reverse 
-    dsps_bit_rev_fc32(y_cf, N);
-    // Convert one complex vector to two complex vectors
-    dsps_cplx2reC_fc32(y_cf, N);
-
-    for (int i = 0 ; i < N/2 ; i++) {
-        y1_cf[i] = 10 * log10f((y1_cf[i * 2 + 0] * y1_cf[i * 2 + 0] + y1_cf[i * 2 + 1] * y1_cf[i * 2 + 1])/N);
-        y2_cf[i] = 10 * log10f((y2_cf[i * 2 + 0] * y2_cf[i * 2 + 0] + y2_cf[i * 2 + 1] * y2_cf[i * 2 + 1])/N);
-        // Simple way to show two power spectrums as one plot
-        sum_y[i] = fmax(y1_cf[i], y2_cf[i]);
-    }
-  
-    // Show power spectrum in 64x10 window from -100 to 0 dB from 0..N/4 samples
-    ESP_LOGW(TAG, "Signal x1");
-    dsps_view(y1_cf, N/2, 64, 10,  -60, 40, '|');
-    ESP_LOGW(TAG, "Signal x2");
-    dsps_view(y2_cf, N/2, 64, 10,  -60, 40, '|');
-    ESP_LOGW(TAG, "Signals x1 and x2 on one plot");
-    dsps_view(sum_y, N/2, 64, 10,  -60, 40, '|');
-    ESP_LOGI(TAG, "FFT for %i complex points take %i cycles", N, end_b - start_b);
-
-    ESP_LOGI(TAG, "End Example.");
-
-
 }
