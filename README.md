@@ -14,4 +14,4 @@ It supports the following features:
 -color change for the led matrix.
 -brightness adjustment.
 
-![Screenshot]https://github.com/Dekameron55/ESP32_A2DP_sink_mod/blob/main/Photo1.jpg
+![Screenshot](https://github.com/Dekameron55/ESP32_A2DP_sink_mod/blob/main/Photo1.jpg)
