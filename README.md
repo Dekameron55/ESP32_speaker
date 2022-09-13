@@ -15,3 +15,7 @@ It supports the following features:
 -brightness adjustment.
 
 ![Screenshot](https://github.com/Dekameron55/ESP32_A2DP_sink_mod/blob/main/Photo1.jpg)
+
+When the device is active.
+
+![Screenshot](https://github.com/Dekameron55/ESP32_A2DP_sink_mod/blob/main/Photo2.jpg)
