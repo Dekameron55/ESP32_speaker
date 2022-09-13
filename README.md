@@ -1,5 +1,5 @@
 
-ESP-IDF A2DP-SINK Trial
+ESP-IDF A2DP demo
 ======================
 
 Demo of A2DP audio sink role for the ESP32 based on an example by Espressif.
